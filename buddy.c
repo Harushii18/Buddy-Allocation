@@ -172,7 +172,7 @@ struct head *splitBlock(struct head *ptr, int currLvl, int originalLvl)
 	currBlock->status = Free;
 	currBlock->next = NULL;
 
-	struct head *buddyBlock = buddy(currBlock);
+	struct head *buddyBlock = primary(currBlock);
 	buddyBlock->level = demoLvl - 1;
 	currBlock->prev = buddyBlock;
 	buddyBlock->prev = NULL;
@@ -425,33 +425,102 @@ void mergeMemory(struct head *block)
 		if (primeBlock->prev != NULL)
 		{
 			struct head *prevBlock = primeBlock->prev;
-			//if there is a next block
-			if (block->next != NULL)
+
+			if (primeBlock->next != NULL && primeBlock->next != block)
 			{
-				struct head *nextBlock = block->next;
-				prevBlock->next = nextBlock;
-				nextBlock->prev = prevBlock;
+				primeBlock->next->prev = prevBlock;
+				prevBlock->next = primeBlock->next;
 			}
-			else
+			else if (primeBlock->next == block)
+			{ //if there is a next block
+				if (block->next != NULL)
+				{
+					struct head *nextBlock = block->next;
+					prevBlock->next = nextBlock;
+					nextBlock->prev = prevBlock;
+				}
+				else
+				{
+					prevBlock->next = NULL;
+				}
+			}
+			else if (primeBlock->prev == block)
+			{
+				if (block->prev == NULL)
+				{
+					if (primeBlock->next == NULL)
+					{
+						flists[block->level] = NULL;
+					}
+					else
+					{
+						flists[block->level] = primeBlock->next;
+					}
+				}
+				else
+				{
+					if (primeBlock->next == NULL)
+					{
+						block->prev->next = NULL;
+					}
+					else
+					{
+						block->prev->next = primeBlock->next;
+						primeBlock->next->prev = block->prev;
+					}
+				}
+			}
+			else if (primeBlock->next == NULL)
 			{
 				prevBlock->next = NULL;
 			}
 		}
+
 		else
 		{
-			//if there is no previous
-			if (block->next != NULL)
+			if (primeBlock->next != NULL && primeBlock->next != block)
 			{
-				struct head *nextBlock = block->next;
-				nextBlock->prev = NULL;
-				flists[block->level] = nextBlock;
+				primeBlock->next->prev = NULL;
+				flists[block->level] = primeBlock->next;
+			}
+			else if (primeBlock->next == block)
+			{
+				//if there is no previous
+				if (block->next != NULL)
+				{
+					struct head *nextBlock = block->next;
+					nextBlock->prev = NULL;
+					flists[block->level] = nextBlock;
+				}
+				else
+				{
+					//as there are no other blocks there
+					flists[primeBlock->level] = NULL;
+				}
+			}
+		}
+
+		//account for if the block is in another place
+		if (block->prev != NULL && block->prev != primeBlock)
+		{
+			if (block->next == NULL)
+			{
+				block->prev->next = NULL;
 			}
 			else
 			{
-				//as there are no other blocks there
-				flists[primeBlock->level] = NULL;
+				block->prev->next = block->next;
+				block->next->prev = block->prev;
 			}
 		}
+		else if (block->prev == NULL)
+		{
+			if (block->next != NULL && block->next != primeBlock)
+			{
+				flists[primeBlock->level] = block->next;
+			}
+		}
+
 		primeBlock->next = NULL;
 		primeBlock->prev = NULL;
 		//goes up a level
@@ -479,73 +548,126 @@ void mergeMemory(struct head *block)
 			mergeMemory(primeBlock);
 		}
 	}
-	else
-	{
-		//need to check if its buddy is free too in the case the block itself is the primary block
+	else //need to check if its buddy is free too in the case the block itself is the primary block
 		if (bud == block->next && bud->status == Free)
+	{
+
+		//sort out pointers of previous and next
+		if (block->prev != NULL)
 		{
-			printf("bud%p bud next %p\n", bud, bud->next);
-			printf("block%p bp %p bn %p\n", block, block->prev, block->next);
-
-			//sort out pointers of previous and next
-			if (block->prev != NULL)
+			struct head *prevBlock = block->prev;
+			//if there is a next block
+			if (bud->next != NULL)
 			{
-				struct head *prevBlock = block->prev;
-				//if there is a next block
-				if (bud->next != NULL)
-				{
-					struct head *nextBlock = bud->next;
-					prevBlock->next = nextBlock;
-					nextBlock->prev = prevBlock;
-				}
-				else
-				{
-					prevBlock->next = NULL;
-				}
+				struct head *nextBlock = bud->next;
+				prevBlock->next = nextBlock;
+				nextBlock->prev = prevBlock;
 			}
 			else
 			{
-				//if there is no previous
-				if (bud->next != NULL)
-				{
-					struct head *nextBlock = bud->next;
-					nextBlock->prev = NULL;
-					flists[block->level] = nextBlock;
-				}
-				else
-				{
-					//as there are no other blocks there
-					flists[block->level] = NULL;
-				}
-			}
-			block->next = NULL;
-			block->prev = NULL;
-			//goes up a level
-			//get rid of buddy
-			bud = NULL;
-			block->level = block->level + 1;
-
-			//wedge it into the previous level
-			//Update flists and free the block which the pointer points to
-			struct head *currLvlBlock = flists[block->level];
-			if (currLvlBlock == NULL)
-			{
-				flists[block->level] = block;
-				return;
-			}
-			else
-			{
-				while (currLvlBlock->next != NULL)
-				{
-					currLvlBlock = currLvlBlock->next;
-				}
-				currLvlBlock->next = block;
-				block->prev = currLvlBlock;
-				//Perform merging up the list if possible
-				mergeMemory(block);
+				prevBlock->next = NULL;
 			}
 		}
+		else
+		{
+			//if there is no previous
+			if (bud->next != NULL)
+			{
+				struct head *nextBlock = bud->next;
+				nextBlock->prev = NULL;
+				flists[block->level] = nextBlock;
+			}
+			else
+			{
+				//as there are no other blocks there
+				flists[block->level] = NULL;
+			}
+		}
+
+		block->next = NULL;
+		block->prev = NULL;
+		//goes up a level
+		//get rid of buddy
+		bud = NULL;
+		block->level = block->level + 1;
+
+		//wedge it into the previous level
+		//Update flists and free the block which the pointer points to
+		struct head *currLvlBlock = flists[block->level];
+		if (currLvlBlock == NULL)
+		{
+			flists[block->level] = block;
+			return;
+		}
+		else
+		{
+			while (currLvlBlock->next != NULL)
+			{
+				currLvlBlock = currLvlBlock->next;
+			}
+			currLvlBlock->next = block;
+			block->prev = currLvlBlock;
+			//Perform merging up the list if possible
+			mergeMemory(block);
+		}
+
 		//do nothing, as we are done with the merges
+		return;
+	}
+	else if (bud == block->prev && bud->status == Free)
+	{
+
+		if (bud->prev == NULL)
+		{
+			if (block->next != NULL)
+			{
+				flists[block->level] = block->next;
+			}
+			else
+			{
+				flists[block->level] = NULL;
+			}
+		}
+		else
+		{
+			//bud's prev isn't null
+			if (block->next != NULL)
+			{
+				bud->prev->next = block->next;
+				block->next->prev = bud->prev;
+			}
+			else
+			{
+				bud->prev->next = NULL;
+			}
+		}
+		bud->next = NULL;
+		bud->prev = NULL;
+		//goes up a level
+		//get rid of buddy
+		block = NULL;
+		bud->level = bud->level + 1;
+
+		//wedge it into the previous level
+		//Update flists and free the block which the pointer points to
+		struct head *currLvlBlock = flists[bud->level];
+		if (currLvlBlock == NULL)
+		{
+			flists[bud->level] = bud;
+			return;
+		}
+		else
+		{
+			while (currLvlBlock->next != NULL)
+			{
+				currLvlBlock = currLvlBlock->next;
+			}
+			currLvlBlock->next = bud;
+			bud->prev = currLvlBlock;
+			//Perform merging up the list if possible
+			mergeMemory(bud);
+		}
+
 		return;
 	}
 }
@@ -620,7 +742,7 @@ void testHelpers()
 
 	buddyBlock = buddy(splitBlock);
 	buddyBlock->level = 6;
-	printf("Buddy tes-> split block with address %p\n", splitBlock);
+	printf("Buddy test-> split block with address %p\n", splitBlock);
 	blockinfo(buddyBlock);
 	//checking splitting again and buddies on multiple levels
 
@@ -696,13 +818,13 @@ void testBalloc()
 	bfree(ptr1); //trying to remove a size 740 block that was allocated earlier and whose head was hidden
 	bfree(ptr2); //trying to 2 buddies next to one another to check merging up the list
 
-	//more testing
-	//free the 56 that is next to a free block (free block to the right, rather than to the left-> a buddy is free before a primary block)
+	// //more testing
+	// //free the 56 that is next to a free block (free block to the right, rather than to the left-> a buddy is free before a primary block)
 	bfree(ptr3); //this should not merge as they are not continuous in memory (there are size 32 blocks in between them)
 	bfree(ptr4); //this should not merge either as its buddy is allocated
 	bfree(ptr5); //this should merge as its budy is free as well
 
-	printf("checkkkkk=================");
+	//DE-ALLOCATE EVERYTHING!
 	bfree(ptr6);
 	bfree(ptr7);
 	bfree(ptr8);
