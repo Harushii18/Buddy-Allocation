@@ -10,3 +10,9 @@ Bfree currently "works" for the test case I put but there are problems with the 
 Excuses as to why it sucks is not because I was procrastinating necessarily, because I did try over a span of a few days, but things just kept coming up that took a lot of my time. I had managed my time, but time was against me really. And also genshin impact. And that I had forgotten how primary and buddy had worked after a few days and my mind remembered it completely differently.
 BUT. Anyways. 
 Maybe one day I will come back to this. It was a project that made me think, and it was sad that I only fully understood it at the last minute. The difficulty was a good challenge.
+
+*******************
+LATER EDIT
+*******************
+I ended up getting 100% for this project so maybe it was right after all! I'm still confused as to the memory address issue, it *did* free correctly looks wise, but the memory address still looked so fishy.
+But I'm happy and since it is actually 100 % worthy, I have decided to make this repo public.
